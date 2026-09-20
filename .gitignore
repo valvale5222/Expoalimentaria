@@ -4,3 +4,6 @@ dist/
 !.env.example
 *.log
 supabase/.temp/
+
+.vercel
+.env*
