@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" role="img" aria-labelledby="title desc">
+  <title id="title">Friopacking</title>
+  <desc id="desc">Logotipo de Friopacking en turquesa y azul corporativo</desc>
+  <g fill="#3ec6ac">
+    <path d="M70 16h24l7 20 18-12 17 17-12 18 20 7v24l-20 7 12 18-17 17-18-12-7 20H70l-7-20-18 12-17-17 12-18-20-7V66l20-7-12-18 17-17 18 12 7-20Z"/>
+    <path d="M113 62h35v12h-35zm0 24h35v12h-35zM97 39h12v82H97z"/>
+  </g>
+  <circle cx="82" cy="78" r="18" fill="#0a1e64"/>
+  <g fill="#3ec6ac">
+    <path d="M119 45l38-22 7 12-38 22zm0 66l38 22-7 12-38-22zM128 72h42v12h-42z"/>
+  </g>
+  <text x="185" y="106" fill="#ffffff" font-family="Arial Narrow, Arial, sans-serif" font-size="76" font-weight="700" letter-spacing="-4">Friopacking</text>
+</svg>
