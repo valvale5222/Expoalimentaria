@@ -7,6 +7,7 @@ import {
   Users,
   List,
   Trophy,
+  Award,
   LogOut,
   Search,
   Camera,
@@ -87,6 +88,19 @@ const dateKey = (d) =>
     day: "2-digit",
   }).format(new Date(d));
 const today = () => dateKey(new Date());
+const shiftDateKey = (key, delta) => {
+  const [y, m, d] = key.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() + delta);
+  return date.toISOString().slice(0, 10);
+};
+const fmtRankDate = (key) =>
+  new Intl.DateTimeFormat("es-PE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  }).format(new Date(`${key}T00:00:00Z`));
 const fmt = (d) =>
   new Intl.DateTimeFormat("es-PE", {
     dateStyle: "medium",
@@ -101,6 +115,17 @@ const initials = (name) =>
     .map((n) => n[0])
     .join("")
     .toUpperCase();
+const withRanks = (entries) => {
+  let rank = 0,
+    prevCount = null;
+  return entries.map(([name, count]) => {
+    if (count !== prevCount) {
+      rank += 1;
+      prevCount = count;
+    }
+    return { name, count, rank };
+  });
+};
 function App() {
   const [user, setUser] = useState(null),
     [profile, setProfile] = useState(null),
@@ -397,20 +422,25 @@ function App() {
   }
   const mine = leads.filter((l) => l.owner_id === user?.id),
     todayLeads = mine.filter((l) => dateKey(l.created_at) === today());
-  const visible = leads.filter((l) =>
-    `${l.nombre} ${l.empresa} ${l.profiles?.full_name || ""}`
-      .toLocaleLowerCase()
-      .includes(query.toLocaleLowerCase()),
-  );
-  const ranking = Object.entries(
-    leads
-      .filter((l) => dateKey(l.created_at) === rankDate)
-      .reduce((r, l) => {
+  const visible = leads
+    .filter((l) => isAdmin || l.owner_id === user?.id)
+    .filter((l) =>
+      `${l.nombre} ${l.empresa} ${l.profiles?.full_name || ""}`
+        .toLocaleLowerCase()
+        .includes(query.toLocaleLowerCase()),
+    );
+  const countByAdvisor = (items) =>
+    Object.entries(
+      items.reduce((r, l) => {
         const name = l.profiles?.full_name || "Asesor";
         r[name] = (r[name] || 0) + 1;
         return r;
       }, {}),
-  ).sort((a, b) => b[1] - a[1]);
+    ).sort((a, b) => b[1] - a[1]);
+  const rankedDay = withRanks(
+    countByAdvisor(leads.filter((l) => dateKey(l.created_at) === rankDate)),
+  );
+  const rankedGeneral = withRanks(countByAdvisor(leads));
   const filled = required.filter((k) => form[k].trim()).length;
   const field = (key, label, placeholder, type = "text", optional = false) => (
     <label className={key === "comentario" ? "wide" : ""}>
@@ -462,6 +492,59 @@ function App() {
         </button>
       </div>
     );
+  const rankingBoard = (ranked, emptyText) => {
+    if (!ranked.length)
+      return (
+        <div className="empty">
+          <Trophy />
+          <h3>{emptyText}</h3>
+        </div>
+      );
+    const topScore = ranked[0].count;
+    return (
+      <>
+        <div className="podium">
+          {[2, 1, 3].map((place) => {
+            const entries = ranked.filter((e) => e.rank === place);
+            return entries.length ? (
+              <div className={`podium-place place-${place}`} key={place}>
+                <span className="podium-medal">{place}</span>
+                <div className="podium-names">
+                  {entries.map((e) => (
+                    <div className="podium-name" key={e.name}>
+                      <strong>{e.name}</strong>
+                      <span>{e.count} leads</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null;
+          })}
+        </div>
+        {ranked.some((e) => e.rank > 3) && (
+          <div className="ranking-rest">
+            <h3>Demás posiciones</h3>
+            {ranked
+              .filter((e) => e.rank > 3)
+              .map((e) => (
+                <div className="rank-row" key={e.name}>
+                  <span className="rank-number">{e.rank}</span>
+                  <div className="rank-copy">
+                    <div className="rank-title">
+                      <strong>{e.name}</strong>
+                      <span>{e.count} leads</span>
+                    </div>
+                    <div className="track">
+                      <div style={{ width: `${(e.count / topScore) * 100}%` }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+      </>
+    );
+  };
   if (!user)
     return (
       <div className="login-page">
@@ -647,16 +730,12 @@ function App() {
             </section>
           </>
         )}
-        {(view === "list" || view === "ranking") && (
+        {view === "list" && (
           <>
             <section className="page-heading">
               <div>
                 <span className="eyebrow">SEGUIMIENTO</span>
-                <h1>
-                  {view === "list"
-                    ? "Registro de contactos"
-                    : "Ranking del equipo"}
-                </h1>
+                <h1>Registro de contactos</h1>
                 <p className="muted">
                   {isAdmin
                     ? "Una visión de los contactos de tu equipo."
@@ -667,77 +746,111 @@ function App() {
                 <Plus size={18} /> Nuevo lead
               </button>
             </section>
-            {view === "list" ? (
-              <section className="card">
-                <label className="search">
-                  <Search size={20} />
+            <section className="card">
+              <label className="search">
+                <Search size={20} />
+                <input
+                  aria-label="Buscar contactos"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar por nombre, empresa o asesor"
+                />
+              </label>
+              <div className="card-heading">
+                <h2>{visible.length} contactos</h2>
+              </div>
+              {loading ? (
+                <p>Cargando…</p>
+              ) : visible.length ? (
+                rows(visible)
+              ) : (
+                <div className="empty">
+                  <Search />
+                  <h3>No hay contactos que mostrar</h3>
+                  <p>
+                    {query
+                      ? "Prueba con otro nombre o empresa."
+                      : "Los contactos registrados aparecerán aquí."}
+                  </p>
+                </div>
+              )}
+            </section>
+          </>
+        )}
+        {view === "ranking-day" && (
+          <>
+            <section className="page-heading">
+              <div>
+                <span className="eyebrow">SEGUIMIENTO</span>
+                <h1>Ranking del día</h1>
+                <p className="muted">¿Quién lidera hoy?</p>
+              </div>
+              <button className="primary" onClick={newLead}>
+                <Plus size={18} /> Nuevo lead
+              </button>
+            </section>
+            <section className="card">
+              <div className="card-heading">
+                <div>
+                  <h2>Podio del día</h2>
+                  <p className="muted">
+                    {rankDate === today()
+                      ? "Leads registrados hoy por asesor."
+                      : `Leads registrados el ${fmtRankDate(rankDate)}.`}
+                  </p>
+                </div>
+                <div className="rank-datenav">
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => setRankDate((d) => shiftDateKey(d, -1))}
+                    aria-label="Día anterior"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
                   <input
-                    aria-label="Buscar contactos"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Buscar por nombre, empresa o asesor"
+                    aria-label="Fecha del ranking"
+                    type="date"
+                    value={rankDate}
+                    max={today()}
+                    onChange={(e) => setRankDate(e.target.value)}
                   />
-                </label>
-                <div className="card-heading">
-                  <h2>{visible.length} contactos</h2>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => setRankDate((d) => shiftDateKey(d, 1))}
+                    disabled={rankDate >= today()}
+                    aria-label="Día siguiente"
+                  >
+                    <ArrowRight size={18} />
+                  </button>
                 </div>
-                {loading ? (
-                  <p>Cargando…</p>
-                ) : visible.length ? (
-                  rows(visible)
-                ) : (
-                  <div className="empty">
-                    <Search />
-                    <h3>No hay contactos que mostrar</h3>
-                    <p>
-                      {query
-                        ? "Prueba con otro nombre o empresa."
-                        : "Los contactos registrados aparecerán aquí."}
-                    </p>
-                  </div>
-                )}
-              </section>
-            ) : (
-              <section className="card">
-                <div className="card-heading">
-                  <h2>Contactos por asesor</h2>
-                  <label>
-                    Fecha
-                    <input
-                      aria-label="Fecha del ranking"
-                      type="date"
-                      value={rankDate}
-                      onChange={(e) => setRankDate(e.target.value)}
-                    />
-                  </label>
+              </div>
+              {rankingBoard(rankedDay, "Todavía no hay registros para esta fecha")}
+            </section>
+          </>
+        )}
+        {view === "ranking-general" && (
+          <>
+            <section className="page-heading">
+              <div>
+                <span className="eyebrow">SEGUIMIENTO</span>
+                <h1>Ranking general</h1>
+                <p className="muted">El acumulado de todos los asesores, desde siempre.</p>
+              </div>
+              <button className="primary" onClick={newLead}>
+                <Plus size={18} /> Nuevo lead
+              </button>
+            </section>
+            <section className="card">
+              <div className="card-heading">
+                <div>
+                  <h2>Podio general</h2>
+                  <p className="muted">Acumulado de leads registrados por asesor, todos los días.</p>
                 </div>
-                {ranking.length ? (
-                  ranking.map(([name, count], i) => (
-                    <div className="rank-row" key={name}>
-                      <span className="rank-number">{i + 1}</span>
-                      <div>
-                        <div className="rank-title">
-                          <strong>{name}</strong>
-                          <span>{count} leads</span>
-                        </div>
-                        <div className="track">
-                          <div
-                            style={{
-                              width: `${(count / ranking[0][1]) * 100}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty">
-                    <Trophy />
-                    <h3>Todavía no hay registros para esta fecha</h3>
-                  </div>
-                )}
-              </section>
-            )}
+              </div>
+              {rankingBoard(rankedGeneral, "Todavía no hay registros")}
+            </section>
           </>
         )}
         {view === "form" && (
@@ -968,24 +1081,29 @@ function App() {
             onClick={() => setView("home")}
           >
             <Users size={20} />
-            Inicio
+            <span>Inicio</span>
           </button>
           <button
             className={view === "list" ? "active" : ""}
             onClick={() => setView("list")}
           >
             <List size={20} />
-            {isAdmin ? "Todos los leads" : "Mis leads"}
+            <span>{isAdmin ? "Todos los leads" : "Mis leads"}</span>
           </button>
-          {isAdmin && (
-            <button
-              className={view === "ranking" ? "active" : ""}
-              onClick={() => setView("ranking")}
-            >
-              <Trophy size={20} />
-              Ranking
-            </button>
-          )}
+          <button
+            className={view === "ranking-day" ? "active" : ""}
+            onClick={() => setView("ranking-day")}
+          >
+            <Trophy size={20} />
+            <span>Ranking del día</span>
+          </button>
+          <button
+            className={view === "ranking-general" ? "active" : ""}
+            onClick={() => setView("ranking-general")}
+          >
+            <Award size={20} />
+            <span>Ranking general</span>
+          </button>
         </nav>
       )}
       <footer>
