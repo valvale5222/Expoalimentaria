@@ -189,6 +189,12 @@ function App() {
     };
   }, [user?.id, demo]);
   useEffect(() => {
+    if (!user || demo) return;
+    if (view === "ranking-day" || view === "ranking-general" || view === "list") {
+      loadLeads();
+    }
+  }, [view]);
+  useEffect(() => {
     if (!photo) {
       setPreview("");
       return;
