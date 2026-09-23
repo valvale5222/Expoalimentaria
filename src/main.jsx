@@ -73,7 +73,6 @@ const initial = {
 const required = [
   "nombre",
   "celular",
-  "correo",
   "empresa",
   "rubro",
   "producto",
@@ -309,6 +308,7 @@ function App() {
           Object.entries(form).map(([k, v]) => [k, v.trim()]),
         ),
         rubro: form.rubro === "Otros" ? otherIndustry.trim() : form.rubro,
+        correo: form.correo.trim() || null,
         producto_detalle:
           form.producto === "Otro" ? form.producto_detalle.trim() : "",
         id,
@@ -897,7 +897,7 @@ function App() {
                   {field("nombre", "Nombre completo", "Nombre y apellido")}
                   {field("dni", "DNI", "Número de documento", "text", true)}
                   {field("celular", "Contacto / celular", "+51 9…", "tel")}
-                  {field("correo", "Correo", "correo@empresa.com", "email")}
+                  {field("correo", "Correo", "correo@empresa.com", "email", true)}
                   {field("empresa", "Empresa", "Nombre de la empresa")}
                   <label>
                     Rubro <em> *</em>
