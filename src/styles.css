@@ -164,3 +164,71 @@ footer span { margin: 0 8px; }
   .login-card { padding: 26px 22px; }
   .brand-logo { width: 180px; }
 }
+/* Seguimiento: reutiliza tipografías, colores y controles de Registro. */
+.registration-row { border-top:1px solid var(--line); }
+.registration-row .lead-row { border-top:0; padding-bottom:10px; }
+.registration-actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:0 0 14px 58px; }
+.registration-actions .text-button { font-size:.75rem; }
+.status-badge { display:inline-flex; align-items:center; gap:6px; width:fit-content; font-size:.7rem; font-weight:600; padding:5px 8px; border-radius:20px; background:#eef2f8; color:var(--blue); white-space:nowrap; }
+.status-badge::before { content:''; width:6px; height:6px; border-radius:50%; background:currentColor; }
+.status-seguimiento { background:#e6f3fb; color:#286285; }
+.status-trabajo { background:#d9f5ef; color:#146957; }
+.status-pospuesto { background:#fbf2de; color:#846526; }
+.status-perdido { background:#fbecef; color:#a33d50; }
+.status-cancelado { background:#eceef1; color:#677080; }
+.commercial-kpis { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); background:white; border:1px solid var(--line); border-radius:6px; padding:22px 10px; margin-bottom:24px; }
+.commercial-kpis > div { padding:0 12px; border-right:1px solid var(--line); }
+.commercial-kpis > div:last-child { border:0; }
+.commercial-kpis strong { display:block; font-family:'Barlow Condensed'; font-size:2rem; color:var(--blue); }
+.commercial-kpis span { display:block; font-size:.72rem; color:var(--muted); margin-top:5px; }
+.commercial-chips { display:flex; gap:7px; flex-wrap:wrap; margin:16px 0; }
+.commercial-chips button { border:1px solid var(--line); color:var(--muted); background:white; border-radius:20px; padding:8px 12px; font-size:.78rem; }
+.commercial-chips button.active { border-color:var(--turquoise); color:var(--blue); background:#d9f5ef; }
+.commercial-filters { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin:24px 0 10px; }
+.commercial-filters label { font-size:.75rem; color:var(--muted); }
+.commercial-filters input,.commercial-filters select { font-size:.8rem; padding:10px; }
+.commercial-result { display:flex; align-items:center; justify-content:space-between; gap:15px; margin:18px 0; }
+.commercial-list { border-top:1px solid var(--line); }
+.commercial-row { position:relative; border-bottom:1px solid var(--line); padding:6px 0 12px; }
+.commercial-row:hover { background:#edf8f5; }
+.commercial-row-main { display:grid; grid-template-columns:1.3fr 1fr 1.2fr 1.1fr 18px; gap:18px; align-items:start; width:100%; text-align:left; border:0; background:transparent; padding:20px 8px 4px; color:inherit; font-size:.82rem; line-height:1.6; }
+.commercial-row-main > span { min-width:0; overflow-wrap:anywhere; }
+.commercial-row-main small { display:block; font-size:.7rem; margin-bottom:5px; }
+.commercial-row-main .status-badge { margin-top:6px; }
+.commercial-excerpt { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.transfer-inline { margin-left:8px; font-size:.75rem; }
+.commercial-overlay { position:fixed; inset:0; background:#0a1e644d; display:flex; justify-content:flex-end; z-index:100; backdrop-filter:blur(3px); }
+.commercial-dialog { width:min(720px,100%); height:100dvh; overflow:auto; background:white; padding:26px 32px; box-shadow:-12px 0 50px #0a1e641a; animation:commercial-enter .18s ease-out; }
+.commercial-dialog.compact { width:min(440px,calc(100% - 32px)); height:auto; max-height:90dvh; margin:auto; border-radius:6px; }
+.commercial-dialog-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.commercial-dialog-heading h2 { font-size:1.8rem; overflow-wrap:anywhere; }
+.commercial-section { margin-top:25px; padding-top:24px; border-top:1px solid var(--line); }
+.commercial-section h3 { margin-bottom:16px; }
+.commercial-data { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.commercial-data dt { color:var(--muted); font-size:.75rem; margin-bottom:5px; }
+.commercial-data dd { margin:0; font-size:.85rem; overflow-wrap:anywhere; white-space:pre-wrap; }
+.commercial-help { color:var(--muted); font-size:.75rem; line-height:1.6; margin:10px 0 20px; }
+.commercial-last { font-size:.8rem; margin-bottom:20px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.commercial-compose { border:0; padding:0 0 24px; }
+.commercial-timeline { list-style:none; padding:0 0 0 18px; margin:22px 0; border-left:1px solid #bcecdf; }
+.commercial-timeline li { position:relative; margin:0 0 25px; }
+.commercial-timeline li::before { content:''; position:absolute; width:7px; height:7px; background:var(--turquoise); border-radius:50%; left:-22px; top:5px; }
+.commercial-timeline p { font-size:.85rem; line-height:1.7; margin-top:7px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.commercial-event-type { display:block; color:#146957; font-size:.65rem; font-weight:700; text-transform:uppercase; margin-top:10px; letter-spacing:1px; }
+.commercial-status-change { color:var(--muted); font-size:.75rem!important; }
+@keyframes commercial-enter { from {opacity:0;transform:translateX(15px);} to {opacity:1;transform:translateX(0);} }
+@media(max-width:1050px) and (min-width:761px) { .app main {padding-left:24px;padding-right:24px;} }
+@media(max-width:760px) {
+ .commercial-kpis { grid-template-columns:repeat(4,1fr); row-gap:20px; }
+ .commercial-kpis > div:nth-child(4) {border:0;}
+ .commercial-filters {grid-template-columns:1fr 1fr;}
+ .commercial-row-main {grid-template-columns:1fr 1fr;gap:12px;}
+ .commercial-row-main > svg {display:none;}
+ .commercial-dialog {padding:20px;}
+ .registration-actions {padding-left:0;gap:8px;}
+ nav {gap:0;}
+ nav button {flex-direction:column;gap:6px;font-size:.63rem;padding:10px 4px;}
+ nav button span {display:block;}
+}
+@media(max-width:400px) { .commercial-kpis {grid-template-columns:repeat(3,1fr);} .commercial-data {grid-template-columns:1fr;} }
+@media(prefers-reduced-motion:reduce) { .commercial-dialog {animation:none;} }

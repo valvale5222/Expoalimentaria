@@ -20,9 +20,12 @@ import {
   Phone,
   FileText,
   Trash2,
+  Activity,
 } from "lucide-react";
 import { supabase } from "./supabase";
 import "./styles.css";
+import { FollowupList, CommercialDetail, TransferModal, StatusBadge } from "./Followup";
+import { responsibleId, canManage } from "./commercial";
 
 const products = [
   "Cámaras Refrigeradas",
@@ -59,6 +62,7 @@ const deleteCodes = {
 };
 const initial = {
   nombre: "",
+  cargo: "",
   dni: "",
   celular: "",
   correo: "",
@@ -126,6 +130,8 @@ const withRanks = (entries) => {
   });
 };
 function App() {
+ const [commercialId,setCommercialId]=useState(null),[transferId,setTransferId]=useState(null),[advisors,setAdvisors]=useState([]);
+
   const [user, setUser] = useState(null),
     [profile, setProfile] = useState(null),
     [demo, setDemo] = useState(false),
@@ -189,7 +195,7 @@ function App() {
   }, [user?.id, demo]);
   useEffect(() => {
     if (!user || demo) return;
-    if (view === "ranking-day" || view === "ranking-general" || view === "list") {
+    if (view === "ranking-day" || view === "ranking-general" || view === "list" || view === "followup") {
       loadLeads();
     }
   }, [view]);
@@ -202,7 +208,40 @@ function App() {
     setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [photo]);
-  async function loadLeads() {
+  useEffect(()=>{
+ if(!user){setAdvisors([]);return;}
+ if(demo){setAdvisors(demoUsers.map((name,i)=>({id:name===profile?.full_name?'demo':'demo-'+i,full_name:name})));return;}
+ let active=true;
+ supabase.from('profiles').select('id, full_name').order('full_name').then(({data,error})=>{if(!active)return;if(error)setError('No se pudieron cargar los responsables. '+error.message);else setAdvisors(data);});
+ return()=>{active=false;};
+ },[user?.id,demo,profile?.full_name]);
+ async function updateCommercial(lead,changes){
+ if(!canManage(lead,user,profile))throw new Error('No tienes permiso para gestionar este lead.');
+ let updated;
+ if(demo){
+ const now=new Date().toISOString();
+ const events=[...(lead.events||[{id:crypto.randomUUID(),created_at:lead.created_at,actor_name:lead.profiles?.full_name,kind:'created',body:'Lead registrado.'}])];
+ const add=event=>events.unshift({id:crypto.randomUUID(),created_at:now,actor_name:profile.full_name,...event});
+ updated={...lead,commercial_version:(lead.commercial_version||0)+1};
+ if(changes.responsible_id){
+ const from=advisors.find(p=>p.id===responsibleId(lead))?.full_name;
+ const to=advisors.find(p=>p.id===changes.responsible_id)?.full_name;
+ add({kind:'transfer',body:'Lead derivado de '+from+' a '+to+'.',old_responsible_id:responsibleId(lead),new_responsible_id:changes.responsible_id});
+ updated.responsible_id=changes.responsible_id;
+ }else{
+ const changed=changes.status!==(lead.commercial_status||'nuevo');
+ if(changes.comment||changed)add({kind:changes.comment?'comment':'status',body:changes.comment||'Estado actualizado.',management_type:changes.management_type,old_status:changed?(lead.commercial_status||'nuevo'):null,new_status:changed?changes.status:null});
+ if(changes.next_action!==(lead.next_action||'')||changes.next_action_date!==(lead.next_action_date||''))add({kind:'next_action',body:'Pr?xima acci?n actualizada: '+(changes.next_action||'Sin acci?n')+' ? '+(changes.next_action_date||'Sin fecha')});
+ Object.assign(updated,{commercial_status:changes.status,next_action:changes.next_action,next_action_date:changes.next_action_date});
+ if(changes.comment)Object.assign(updated,{last_management:changes.comment,last_management_at:now});
+ }updated.events=events;
+ }else{
+ const {data,error}=await supabase.rpc('update_lead_commercial',{p_lead_id:lead.id,p_version:lead.commercial_version||0,p_changes:changes});
+ if(error)throw new Error('No se pudo registrar la actualizaci?n. '+error.message);
+ updated={...lead,...data};
+ }setLeads(current=>current.map(l=>l.id===lead.id?updated:l));
+ }
+ async function loadLeads() {
     setLoading(true);
     let all = [],
       from = 0;
@@ -264,6 +303,8 @@ function App() {
     setDemo(false);
     setLeads([]);
     setSelected(null);
+    setCommercialId(null);
+    setTransferId(null);
     setPhoto(null);
     setOtherIndustry("");
     setForm(initial);
@@ -474,7 +515,7 @@ function App() {
   const rows = (items) =>
     items.length ? (
       items.map((l) => (
-        <button className="lead-row" key={l.id} onClick={() => detail(l)}>
+        <div className="registration-row" key={l.id}><button className="lead-row" onClick={() => detail(l)}>
           <span className="avatar">{initials(l.nombre)}</span>
           <span className="lead-copy">
             <strong>{l.nombre}</strong>
@@ -486,7 +527,7 @@ function App() {
             {fmt(l.created_at)}
             <ArrowRight size={16} />
           </span>
-        </button>
+        </button><div className="registration-actions"><StatusBadge lead={l}/><small>{advisors.find(p=>p.id===responsibleId(l))?.full_name||l.profiles?.full_name}</small>{canManage(l,user,profile)&&<button className="text-button" onClick={()=>setTransferId(l.id)}>Derivar</button>}<button className="text-button" onClick={()=>setCommercialId(l.id)}>Seguimiento <ArrowRight size={14}/></button></div></div>
       ))
     ) : (
       <div className="empty">
@@ -740,7 +781,7 @@ function App() {
           <>
             <section className="page-heading">
               <div>
-                <span className="eyebrow">SEGUIMIENTO</span>
+                <span className="eyebrow">REGISTRO</span>
                 <h1>Registro de contactos</h1>
                 <p className="muted">
                   {isAdmin
@@ -783,6 +824,7 @@ function App() {
             </section>
           </>
         )}
+        {view === "followup" && <FollowupList leads={leads.filter(l=>canManage(l,user,profile))} profiles={advisors} user={user} profile={profile} loading={loading} onOpen={l=>setCommercialId(l.id)} onTransfer={l=>setTransferId(l.id)} onRefresh={()=>{if(!demo)loadLeads();}} />}
         {view === "ranking-day" && (
           <>
             <section className="page-heading">
@@ -895,6 +937,7 @@ function App() {
                 </legend>
                 <div className="grid">
                   {field("nombre", "Nombre completo", "Nombre y apellido")}
+                  {field("cargo", "Cargo", "Cargo del contacto", "text", true)}
                   {field("dni", "DNI", "Número de documento", "text", true)}
                   {field("celular", "Contacto / celular", "+51 9…", "tel")}
                   {field("correo", "Correo", "correo@empresa.com", "email", true)}
@@ -1094,8 +1137,9 @@ function App() {
             onClick={() => setView("list")}
           >
             <List size={20} />
-            <span>{isAdmin ? "Todos los leads" : "Mis leads"}</span>
+            <span>Registro</span>
           </button>
+          <button className={view === "followup" ? "active" : ""} onClick={()=>setView("followup")} aria-label="Seguimiento"><Activity size={20}/><span>Seguimiento</span></button>
           <button
             className={view === "ranking-day" ? "active" : ""}
             onClick={() => setView("ranking-day")}
@@ -1112,6 +1156,8 @@ function App() {
           </button>
         </nav>
       )}
+      {commercialId && leads.some(l=>l.id===commercialId) && <CommercialDetail key={commercialId} lead={leads.find(l=>l.id===commercialId)} profiles={advisors} user={user} profile={profile} demo={demo} onClose={()=>setCommercialId(null)} onUpdate={updateCommercial} onTransfer={l=>setTransferId(l.id)}/>}
+      {transferId && leads.some(l=>l.id===transferId) && <TransferModal key={transferId} lead={leads.find(l=>l.id===transferId)} profiles={advisors} onClose={()=>setTransferId(null)} onUpdate={updateCommercial}/>}
       <footer>
         Registro de leads <span>·</span> Cada contacto cuenta.
       </footer>

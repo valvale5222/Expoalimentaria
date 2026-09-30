@@ -57,3 +57,19 @@ Después de desplegarla, desactivar Anonymous Sign-Ins en Authentication. La fun
 La integración no se considera verificada hasta aplicar la migración y probar con dos asesores y un administrador: el asesor A no debe leer leads/fotos de B; el administrador sí puede consultar ambos; una petición sin sesión debe fallar; insertar con owner_id ajeno debe fallar. Comprobar también guardado, foto, recarga y cierre de sesión.
 
 La selección de nombres y los privilegios basados en el nombre de la referencia se reemplazan por Supabase Auth y RLS en la versión conectada. El enlace a su cotizador y sus marcas no se incluyen porque corresponden al negocio de la referencia.
+
+## Seguimiento comercial (30/09/2026)
+
+Para actualizar el proyecto existente, ejecutar **una sola vez**, completo, el archivo `supabase/migrations/202609300001_commercial_followup.sql` en Supabase → SQL Editor → New query → Run. Aplicarlo antes de desplegar esta versión del frontend. No volver a ejecutar la migración inicial sobre el proyecto existente. La migración usa una transacción: si falla, no aplicar fragmentos aislados.
+
+Después, ejecutar `npm run build` y publicar `dist/` mediante el despliegue habitual.
+
+La migración conserva los leads, fotografías, autores y rankings. Inicializa los leads anteriores como Nuevo, asigna como responsable al captador e incorpora el evento de creación con su fecha original; no inventa gestiones anteriores. Agrega cargo opcional, estado, responsable, próxima acción, fecha, última gestión y bitácora. Cargo queda vacío en registros anteriores.
+
+Registro mantiene la captura y consulta. Seguimiento permite filtrar por estado, responsable, empresa y fechas exactas. El administrador gestiona todo el equipo; cada asesor gestiona los leads que registró y los asignados a él. Los rankings siguen contabilizando al captador original. Se conserva la política existente de lectura global de leads para los rankings; la nueva bitácora tiene lectura restringida al captador, responsable y administrador.
+
+Las actualizaciones usan `update_lead_commercial`: valida permisos y versión, bloquea el registro y guarda los cambios y eventos en una sola transacción. Una derivación conserva el estado y registra actor, responsables anterior/nuevo y fecha del servidor. Si alguien modifica el mismo lead, el usuario debe cerrar el detalle, pulsar Actualizar y reabrirlo antes de reintentar. La bitácora no admite escritura directa desde el cliente.
+
+Validación local: `node --test tests/commercial.test.js` y `npm run build`.
+
+Validación pendiente en Supabase después de ejecutar SQL: crear un lead; registrar comentario con tipo de gestión, cambio de estado y próxima acción; recargar; derivar a un segundo comercial y comprobar su acceso y foto; comprobar autor original y ranking; intentar modificar desde un tercero; probar dos sesiones editando la misma versión. No se ejecutó la migración contra el proyecto remoto durante esta implementación.
